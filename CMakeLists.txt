@@ -22,7 +22,7 @@ endif()
     endif()
 
     if (NOT DEFINED RADIX_REVERT)
-        set(RADIX_REVERT 1)
+        set(RADIX_REVERT 0)
     endif()
 
 # Build
