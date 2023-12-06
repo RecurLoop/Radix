@@ -7,7 +7,6 @@
 typedef enum RadixError {
     RADIX_SUCCESS,
     RADIX_OUT_OF_MEMORY,
-    RADIX_EXPIRED_ITERATOR,
 } RadixError;
 
 /**
