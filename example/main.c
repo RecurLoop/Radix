@@ -31,6 +31,7 @@ int main()
 
     // Prepare radix iterator (will be empty) - show radixIterator functionality
     RadixIterator iterator = radixIterator(&radix);
+    RadixValue valueIterator = radixValue(&radix);
 
     // Store helper variables
     char *keyForOverride = "Key for override";
@@ -113,14 +114,14 @@ int main()
     // - show radixMatchToIterator, radixIteratorToValue, radixValuePrevious functionality
     RadixIterator matchIterator = radixMatchToIterator(&overrideKeyMatch);
 
-    RadixValue valueIterator = radixIteratorToValue(&matchIterator);
+    RadixValue previousValueIterator = radixIteratorToValue(&matchIterator);
 
-    valueIterator = radixValuePrevious(&valueIterator);
+    previousValueIterator = radixValuePrevious(&previousValueIterator);
 
-    if (radixValueIsEmpty(&valueIterator)) {
+    if (radixValueIsEmpty(&previousValueIterator)) {
         printf("ERROR (Match): there is no previouse value for key \"%s\"\n\n", keyForOverride);
     } else {
-        printf("Key:\"%s\" after insert 2st set of keys has previous value  : \"%s\"\n\n", keyForOverride, valueIterator.data);
+        printf("Key:\"%s\" after insert 2st set of keys has previous value  : \"%s\"\n\n", keyForOverride, previousValueIterator.data);
     }
 
     // restore checkpoint after 1st set of keys - show radixCheckpointRestore functionality
@@ -260,7 +261,6 @@ int main()
     }
     printf("\n");
 
-
     // Show radixEarlier, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator Earlier (chronological-reverse order):\n");
     for (RadixIterator it = radixEarlier(&iterator); !radixIteratorIsEmpty(&it); it = radixEarlier(&it)) {
@@ -276,6 +276,30 @@ int main()
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
             (char*)it.data
+        );
+
+        free(key);
+    }
+    printf("\n");
+
+    // Show radixEarlier, radixKeySize, radixKeyBits, radixKeyCopy functionality
+    printf("Value Iterator Earlier (chronological-reverse order):\n");
+    for (RadixValue val = radixValueEarlier(&valueIterator); !radixValueIsEmpty(&val); val = radixValueEarlier(&val)) {
+        RadixIterator it = radixValueToIterator(&val);
+
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
+
+
+        RadixError error = radixKeyCopy(&it, key, keyBits);
+
+        printf(
+            "key%s: %s\tdata: %s\n",
+            error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
+            key,
+            (char*)val.data
         );
 
         free(key);

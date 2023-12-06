@@ -114,6 +114,16 @@ RadixIterator radixIterator(Radix *radix)
     };
 }
 
+RadixValue radixValue(Radix *radix)
+{
+    return (RadixValue){
+        .radix = radix,
+        .item = 0,
+        .data = NULL,
+        .dataSize = 0,
+    };
+}
+
 RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, uint8_t *data, size_t dataSize)
 {
     Radix *radix = iterator->radix;
@@ -1532,13 +1542,13 @@ RadixValue radixValuePrevious(RadixValue *iterator)
     if (iterator->item == 0)
         return result;
 
-    Item *item = (Item *) (radix->memory - sizeof(Item) - iterator->item);
+    Item *item = (Item *) (radix->memory + iterator->item);
 
     while (true) {
         if (item->previous == 0)
             return result;
 
-        Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
+        Item *previous = (Item *) (radix->memory + item->previous);
 
         if (previous->size > 0) {
             result.item = item->previous;
@@ -1866,6 +1876,16 @@ RadixIterator radixIterator(Radix *radix)
     return (RadixIterator){
         .radix = radix,
         .node = 0,
+        .data = NULL,
+        .dataSize = 0,
+    };
+}
+
+RadixValue radixValue(Radix *radix)
+{
+    return (RadixValue){
+        .radix = radix,
+        .item = 0,
         .data = NULL,
         .dataSize = 0,
     };
@@ -3338,7 +3358,7 @@ RadixValue radixValueEarlier(RadixValue *iterator)
 {
     Radix *radix = iterator->radix;
 
-    Meta *meta = (Meta *)radix->memory - sizeof(Meta);
+    Meta *meta = (Meta *) (radix->memory - sizeof(Meta));
 
     RadixValue result = {0};
 
@@ -3356,7 +3376,7 @@ RadixValue radixValueEarlier(RadixValue *iterator)
 
         // If item has item not nullable - return result
         if (item->size > 0) {
-            result.item = radix->memory - (uint8_t *)item;
+            result.item = radix->memory - (uint8_t *)item - sizeof(Item);
             result.data = (uint8_t*)item + sizeof(Item);
             result.dataSize = item->size;
 
@@ -3374,7 +3394,7 @@ RadixValue radixValueEarlier(RadixValue *iterator)
 
         // If item has item not nullable - return result
         if (item->size > 0) {
-            result.item = radix->memory - (uint8_t *)item;
+            result.item = radix->memory - (uint8_t *)item - sizeof(Item);
             result.data = (uint8_t*)item + sizeof(Item);
             result.dataSize = item->size;
 
@@ -3387,7 +3407,7 @@ RadixValue radixValueEarlierNullable(RadixValue *iterator)
 {
     Radix *radix = iterator->radix;
 
-    Meta *meta = (Meta *)radix->memory - sizeof(Meta);
+    Meta *meta = (Meta *)(radix->memory - sizeof(Meta));
 
     RadixValue result = {0};
 
@@ -3404,7 +3424,7 @@ RadixValue radixValueEarlierNullable(RadixValue *iterator)
         item = (Item *) (radix->memory - sizeof(Item) - meta->lastItem);
 
         // return result
-        result.item = radix->memory - (uint8_t *)item;
+        result.item = radix->memory - (uint8_t *)item - sizeof(Item);
         result.data = (uint8_t*)item + sizeof(Item);
         result.dataSize = item->size;
 
@@ -3420,7 +3440,7 @@ RadixValue radixValueEarlierNullable(RadixValue *iterator)
         item = (Item *) (radix->memory - sizeof(Item) - item->lastItem);
 
         // return result
-        result.item = radix->memory - (uint8_t *)item;
+        result.item = radix->memory - (uint8_t *)item - sizeof(Item);
         result.data = (uint8_t*)item + sizeof(Item);
         result.dataSize = item->size;
 

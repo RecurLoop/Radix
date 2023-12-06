@@ -117,12 +117,25 @@ Radix radixCreate(uint8_t *memory, size_t memorySize);
  * Radix Iterator
  *  This function creates a radix tree iterator.
  *
- *  When this function is called, the node is set to not existing object.
+ *  When this function is called, the iterator
+ *  is set to not existing object (empty).
  *
  *  @param radix radix tree
  *  @return RadixIterator object
  */
 RadixIterator radixIterator(Radix *radix);
+
+/**
+ * Radix Value
+ *  This function creates a radix value iterator.
+ *
+ *  When this function is called, the iterator
+ *  is set to not existing object (empty).
+ *
+ *  @param radix radix tree
+ *  @return RadixValue object
+ */
+RadixValue radixValue(Radix *radix);
 
 /**
  * Radix Insert
