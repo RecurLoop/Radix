@@ -50,9 +50,6 @@ typedef struct RadixValue {
  * Radix Iterator
  *  This structure provides information about radix node
  *
- *  The best practice to check if it points to a node (including null value)
- *  is to check if node != 0
- *
  *  Readonly!
  *
  *  @see radixPrev
@@ -73,9 +70,6 @@ typedef struct RadixIterator {
 /**
  * Radix Match
  *  This structure provides information about match
- *
- *  The best practice to check if it points to a node (including null value)
- *  is to check if node != 0
  *
  *  only the exact match function can return match on a nullable object
  *  @see radixMatch
@@ -148,7 +142,7 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
 /**
  * Radix Record Remove
  *  This function does not actually delete the record.
- *  Sets the value for this key to null.
+ *  Inserts new null data for this key.
  *
  *  @param iterator radix tree iterator
  *  @param key pointer to key
@@ -160,7 +154,8 @@ RadixValue radixRemove(RadixIterator* iterator, uint8_t *key, size_t keyBits);
 /**
  * Radix Match Record
  *  this function looks for a record with the exactly matching key.
- *  returns even if the value is null
+ *  returns only an match with non-null data.
+ *  Match object can be empty.
  *
  *  @param iterator radix tree iterator
  *  @param key pointer to key
@@ -172,7 +167,8 @@ RadixMatch radixMatch(RadixIterator *iterator, uint8_t *key, size_t keyBits);
 /**
  * Radix Match Record
  *  this function looks for a record with the exactly matching key.
- *  returns even if the value is null
+ *  returns even if the data is null.
+ *  Match object can be empty.
  *
  *  @param iterator radix tree iterator
  *  @param key pointer to key
@@ -184,7 +180,8 @@ RadixMatch radixMatchNullable(RadixIterator *iterator, uint8_t *key, size_t keyB
 /**
  * Radix Match First Record
  *  This function looks for the record with the first matching key.
- *  Looks for records that have a value other than null.
+ *  returns only an match with non-null data.
+ *  Match object can be empty.
  *
  *  @param radix radix tree
  *  @param key pointer to key
@@ -196,7 +193,8 @@ RadixMatch radixMatchFirst(RadixIterator *iterator, uint8_t *key, size_t keyBits
 /**
  * Radix Match First Record
  *  This function looks for the record with the first matching key.
- *  returns even if the value is null
+ *  returns even if the data is null.
+ *  Match object can be empty.
  *
  *  @param radix radix tree
  *  @param key pointer to key
@@ -208,7 +206,8 @@ RadixMatch radixMatchFirstNullable(RadixIterator *iterator, uint8_t *key, size_t
 /**
  * Radix Match Longest Record
  *  This function looks for a record with the longest matching key.
- *  Looks for records that have a value other than null.
+ *  returns only an match with non-null data.
+ *  Match object can be empty.
  *
  *  @param radix radix tree
  *  @param key pointer to key
@@ -220,7 +219,8 @@ RadixMatch radixMatchLongest(RadixIterator *iterator, uint8_t *key, size_t keyBi
 /**
  * Radix Match Longest Record
  *  This function looks for a record with the longest matching key.
- *  returns even if the value is null
+ *  returns even if the data is null.
+ *  Match object can be empty.
  *
  *  @param radix radix tree
  *  @param key pointer to key
@@ -231,7 +231,7 @@ RadixMatch radixMatchLongestNullable(RadixIterator *iterator, uint8_t *key, size
 
 /**
  * Radix Match To Iterator
- *  This function converts match to iterator.
+ *  This function converts match object to iterator object.
  *
  *  @param match radix match object
  *  @return RadixIterator object
@@ -250,9 +250,13 @@ bool radixMatchIsEmpty(RadixMatch *match);
 
 /**
  * Radix Prev (lexicographical order)
- *  This function will return an iterator pointing to the smaller element.
+ *  This function will return an iterator pointing to smaller element.
+ *  returns only an iterator with non-null data.
  *
  *  It assumes that shorter keys are smaller than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the largest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -262,9 +266,12 @@ RadixIterator radixPrev(RadixIterator *iterator);
 /**
  * Radix Prev (lexicographical order)
  *  This function will return an iterator pointing to the smaller element.
- *  returns even if the value is null
+ *  returns even if the value is null.
  *
  *  It assumes that shorter keys are smaller than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the largest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -274,8 +281,12 @@ RadixIterator radixPrevNullable(RadixIterator *iterator);
 /**
  * Radix Next (lexicographical order)
  *  This function will return an iterator pointing to the greater element.
+ *  returns only an iterator with non-null data.
  *
  *  It assumes that shorter keys are smaller than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the smallest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -285,9 +296,12 @@ RadixIterator radixNext(RadixIterator *iterator);
 /**
  * Radix Next (lexicographical order)
  *  This function will return an iterator pointing to the greater element.
- *  returns even if the value is null
+ *  returns even if the value is null.
  *
  *  It assumes that shorter keys are smaller than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the smallest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -297,8 +311,12 @@ RadixIterator radixNextNullable(RadixIterator *iterator);
 /**
  * Radix Prev Inver (lexicographical order)
  *  This function will return an iterator pointing to the smaller element.
+ *  returns only an iterator with non-null data.
  *
  *  It assumes that shorter keys are greater than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the largest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -308,9 +326,12 @@ RadixIterator radixPrevInverse(RadixIterator *iterator);
 /**
  * Radix Prev Inver (lexicographical order)
  *  This function will return an iterator pointing to the smaller element.
- *  returns even if the value is null
+ *  returns even if the value is null.
  *
  *  It assumes that shorter keys are greater than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the largest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -320,8 +341,12 @@ RadixIterator radixPrevInverseNullable(RadixIterator *iterator);
 /**
  * Radix Next Inver (lexicographical order)
  *  This function will return an iterator pointing to the greater element.
+ *  returns only an iterator with non-null data.
  *
  *  It assumes that shorter keys are greater than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the smallest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -331,9 +356,12 @@ RadixIterator radixNextInverse(RadixIterator *iterator);
 /**
  * Radix Next Inver (lexicographical order)
  *  This function will return an iterator pointing to the greater element.
- *  returns even if the value is null
+ *  returns even if the value is null.
  *
  *  It assumes that shorter keys are greater than longer ones.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the smallest element.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -343,9 +371,13 @@ RadixIterator radixNextInverseNullable(RadixIterator *iterator);
 /**
  * Radix Earlier (chronological order)
  *  This function will return an iterator pointing to the earlier element.
+ *  returns only an iterator with non-null data.
+ *
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the latest element.
  *
  *  There is no radixLater function because it would require increasing
- *  memory usage
+ *  memory usage.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -355,10 +387,13 @@ RadixIterator radixEarlier(RadixIterator *iterator);
 /**
  * Radix Earlier (chronological order)
  *  This function will return an iterator pointing to the earlier element.
- *  returns even if the value is null
+ *  returns even if the value is null.
  *
- *  There is no radixNullableLater function because it would require increasing
- *  memory usage
+ *  Passing an empty iterator returns an iterator
+ *  pointing to the latest element.
+ *
+ *  There is no radixLaterNullable function because it would require increasing
+ *  memory usage.
  *
  *  @param iterator radix iterator
  *  @return radix iterator object
@@ -398,14 +433,60 @@ bool radixIteratorIsEmpty(RadixIterator *iterator);
 /**
  * Radix Value Previous
  *  This function returns a iterator pointing to previous value for this key.
+ *  returns only an iterator with non-null data.
  *
  *  There is no radixValueLater function because it would require increasing
- *  memory usage
+ *  memory usage.
  *
  *  @param value radix value iterator object
  *  @return RadixValue object
  */
 RadixValue radixValuePrevious(RadixValue *iterator);
+
+/**
+ * Radix Value Previous
+ *  This function returns a iterator pointing to previous value for this key.
+ *  returns even if the value is null.
+ *
+ *  There is no radixValueLater function because it would require increasing
+ *  memory usage.
+ *
+ *  @param value radix value iterator object
+ *  @return RadixValue object
+ */
+RadixValue radixValuePreviousNullable(RadixValue *iterator);
+
+/**
+ * Radix Value Earlier (chronological order)
+ *  This function will return an iterator pointing to the earlier element.
+ *  returns only an iterator with non-null data.
+ *
+ *  Passing an empty value iterator returns an value iterator
+ *  pointing to the latest element.
+ *
+ *  There is no radixValueLater function because it would require increasing
+ *  memory usage.
+ *
+ *  @param iterator radix value iterator
+ *  @return radix value iterator object
+ */
+RadixValue radixValueEarlier(RadixValue *iterator);
+
+/**
+ * Radix Value Earlier (chronological order)
+ *  This function will return an value iterator pointing to the earlier element.
+ *  returns even if the value is null.
+ *
+ *  Passing an empty value iterator returns an value iterator
+ *  pointing to the latest element.
+ *
+ *  There is no radixValueLaterNullable function because it would require
+ *  increasing memory usage.
+ *
+ *  @param iterator radix value iterator
+ *  @return radix value iterator object
+ */
+RadixValue radixValueEarlierNullable(RadixValue *iterator);
 
 /**
  * Radix Iterator To Value

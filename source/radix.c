@@ -1407,7 +1407,7 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory + node->item);
 
-        // If matched node has item not nullable - return result
+        // If node has item not nullable - return result
         if (node->item != 0 && item->size > 0) {
             result.node = (uint8_t *)node - radix->memory;
             result.data = (uint8_t*)item + sizeof(Item);
@@ -1427,7 +1427,7 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory + node->item);
 
-        // If matched node has item not nullable - return match
+        // If node has item not nullable - return result
         if (node->item != 0 && item->size > 0) {
             result.node = (uint8_t *)node - radix->memory;
             result.data = (uint8_t*)item + sizeof(Item);
@@ -1460,7 +1460,7 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory + node->item);
 
-        // If matched node has item nullable - return result
+        // If node has item nullable - return result
         if (node->item != 0) {
             result.node = (uint8_t *)node - radix->memory;
             result.data = (uint8_t*)item + sizeof(Item);
@@ -1480,7 +1480,7 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory + node->item);
 
-        // If matched node has item nullable - return match
+        // If node has item nullable - return result
         if (node->item != 0) {
             result.node = (uint8_t *)node - radix->memory;
             result.data = (uint8_t*)item + sizeof(Item);
@@ -1532,18 +1532,143 @@ RadixValue radixValuePrevious(RadixValue *iterator)
     if (iterator->item == 0)
         return result;
 
-    Item *item = (Item *) (radix->memory + iterator->item);
+    Item *item = (Item *) (radix->memory - sizeof(Item) - iterator->item);
 
-    Item *previous = (Item *) (radix->memory + item->previous);
+    while (true) {
+        if (item->previous == 0)
+            return result;
 
-    if (previous == NULL)
+        Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
+
+        if (previous->size > 0) {
+            result.item = item->previous;
+            result.data = (uint8_t *)previous + sizeof(Item);
+            result.dataSize = previous->size;
+
+            return result;
+        }
+
+        item = previous;
+    }
+}
+
+RadixValue radixValuePreviousNullable(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    if (iterator->item == 0)
         return result;
+
+    Item *item = (Item *) (radix->memory - sizeof(Item) - iterator->item);
+
+    if (item->previous == 0)
+        return result;
+
+    Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
 
     result.item = item->previous;
     result.data = (uint8_t *)previous + sizeof(Item);
     result.dataSize = previous->size;
 
     return result;
+}
+
+RadixValue radixValueEarlier(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    Meta *meta = (Meta *)radix->memory;
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    Item *item = iterator->item != 0 ? (Item *) (radix->memory + iterator->item) : NULL;
+
+    // if item is null - start iteration by finding the latest node
+    if (item == NULL) {
+        // If the structure has not been managed before, you can't start from head
+        if (meta->lastItem == 0) return result;
+
+        // Retrieve last node
+        item = (Item *) (radix->memory + meta->lastItem);
+
+        // If item has item not nullable - return result
+        if (item->size > 0) {
+            result.item = (uint8_t *)item - radix->memory;
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+
+    // Move to earlier item than given
+    while (true) {
+        if (item->lastItem == 0)
+            return result;
+
+        // Move to earlier
+        item = (Item *) (radix->memory + item->lastItem);
+
+        // If item has item not nullable - return result
+        if (item->size > 0) {
+            result.item = (uint8_t *)item - radix->memory;
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+}
+
+RadixValue radixValueEarlierNullable(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    Meta *meta = (Meta *)radix->memory;
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    Item *item = iterator->item != 0 ? (Item *) (radix->memory + iterator->item) : NULL;
+
+    // if item is null - start iteration by finding the latest node
+    if (item == NULL) {
+        // If the structure has not been managed before, you can't start from head
+        if (meta->lastItem == 0) return result;
+
+        // Retrieve last node
+        item = (Item *) (radix->memory + meta->lastItem);
+
+        // return result
+        result.item = (uint8_t *)item - radix->memory;
+        result.data = (uint8_t*)item + sizeof(Item);
+        result.dataSize = item->size;
+
+        return result;
+    }
+
+    // Move to earlier item than given
+    while (true) {
+        if (item->lastItem == 0)
+            return result;
+
+        // Move to earlier
+        item = (Item *) (radix->memory + item->lastItem);
+
+        // return result
+        result.item = (uint8_t *)item - radix->memory;
+        result.data = (uint8_t*)item + sizeof(Item);
+        result.dataSize = item->size;
+
+        return result;
+    }
 }
 
 RadixIterator radixValueToIterator(RadixValue *iterator)
@@ -3039,7 +3164,7 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory - sizeof(Item) - node->item);
 
-        // If matched node has item not nullable - return result
+        // If node has item not nullable - return result
         if (node->item != 0 && item->size > 0) {
             result.node = radix->memory - (uint8_t *)node - sizeof(Node);
             result.data = (uint8_t*)item + sizeof(Item);
@@ -3059,7 +3184,7 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory - sizeof(Item) - node->item);
 
-        // If matched node has item not nullable - return match
+        // If node has item not nullable - return match
         if (node->item != 0 && item->size > 0) {
             result.node = radix->memory - (uint8_t *)node - sizeof(Node);
             result.data = (uint8_t*)item + sizeof(Item);
@@ -3092,7 +3217,7 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory - sizeof(Item) - node->item);
 
-        // If matched node has item nullable - return result
+        // If node has item nullable - return result
         if (node->item != 0) {
             result.node = radix->memory - (uint8_t *)node - sizeof(Node);
             result.data = (uint8_t*)item + sizeof(Item);
@@ -3112,7 +3237,7 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         Item *item = (Item *) (radix->memory - sizeof(Item) - node->item);
 
-        // If matched node has item nullable - return match
+        // If node has item nullable - return match
         if (node->item != 0) {
             result.node = radix->memory - (uint8_t *)node - sizeof(Node);
             result.data = (uint8_t*)item + sizeof(Item);
@@ -3166,16 +3291,141 @@ RadixValue radixValuePrevious(RadixValue *iterator)
 
     Item *item = (Item *) (radix->memory - sizeof(Item) - iterator->item);
 
-    Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
+    while (true) {
+        if (item->previous == 0)
+            return result;
 
-    if (previous == NULL)
+        Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
+
+        if (previous->size > 0) {
+            result.item = item->previous;
+            result.data = (uint8_t *)previous + sizeof(Item);
+            result.dataSize = previous->size;
+
+            return result;
+        }
+
+        item = previous;
+    }
+}
+
+RadixValue radixValuePreviousNullable(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    if (iterator->item == 0)
         return result;
+
+    Item *item = (Item *) (radix->memory - sizeof(Item) - iterator->item);
+
+    if (item->previous == 0)
+        return result;
+
+    Item *previous = (Item *) (radix->memory - sizeof(Item) - item->previous);
 
     result.item = item->previous;
     result.data = (uint8_t *)previous + sizeof(Item);
     result.dataSize = previous->size;
 
     return result;
+}
+
+RadixValue radixValueEarlier(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    Meta *meta = (Meta *)radix->memory - sizeof(Meta);
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    Item *item = iterator->item != 0 ? (Item *) (radix->memory - sizeof(Item) - iterator->item) : NULL;
+
+    // if item is null - start iteration by finding the latest node
+    if (item == NULL) {
+        // If the structure has not been managed before, you can't start from head
+        if (meta->lastItem == 0) return result;
+
+        // Retrieve last node
+        item = (Item *) (radix->memory - sizeof(Item) - meta->lastItem);
+
+        // If item has item not nullable - return result
+        if (item->size > 0) {
+            result.item = radix->memory - (uint8_t *)item;
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+
+    // Move to earlier item than given
+    while (true) {
+        if (item->lastItem == 0)
+            return result;
+
+        // Move to earlier
+        item = (Item *) (radix->memory - sizeof(Item) - item->lastItem);
+
+        // If item has item not nullable - return result
+        if (item->size > 0) {
+            result.item = radix->memory - (uint8_t *)item;
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+}
+
+RadixValue radixValueEarlierNullable(RadixValue *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    Meta *meta = (Meta *)radix->memory - sizeof(Meta);
+
+    RadixValue result = {0};
+
+    result.radix = radix;
+
+    Item *item = iterator->item != 0 ? (Item *) (radix->memory - sizeof(Item) - iterator->item) : NULL;
+
+    // if item is null - start iteration by finding the latest node
+    if (item == NULL) {
+        // If the structure has not been managed before, you can't start from head
+        if (meta->lastItem == 0) return result;
+
+        // Retrieve last node
+        item = (Item *) (radix->memory - sizeof(Item) - meta->lastItem);
+
+        // return result
+        result.item = radix->memory - (uint8_t *)item;
+        result.data = (uint8_t*)item + sizeof(Item);
+        result.dataSize = item->size;
+
+        return result;
+    }
+
+    // Move to earlier item than given
+    while (true) {
+        if (item->lastItem == 0)
+            return result;
+
+        // Move to earlier
+        item = (Item *) (radix->memory - sizeof(Item) - item->lastItem);
+
+        // return result
+        result.item = radix->memory - (uint8_t *)item;
+        result.data = (uint8_t*)item + sizeof(Item);
+        result.dataSize = item->size;
+
+        return result;
+    }
 }
 
 RadixIterator radixValueToIterator(RadixValue *iterator)
