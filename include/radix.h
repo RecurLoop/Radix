@@ -12,8 +12,13 @@ typedef enum RadixError {
 
 /**
  * Radix
+ *  This structure provides information about the resources of radix.
+ *
+ *  Readonly!
+ *
  *  Pass radix with data about the memory it
  *  should operate on and start using it!
+ *  @see radixCreate
  *
  *  If you assign randomly filled memory, remember to clear the radix state.
  *  Memory filled with zeros is a cleared radix state.
@@ -105,6 +110,15 @@ typedef struct RadixMatch {
 typedef struct RadixCheckpoint {
     size_t state;
 } RadixCheckpoint;
+
+/**
+ * Radix Create
+ *  This function creates a radix tree object.
+ *
+ *  @param memory pointer to allocated memory
+ *  @return RadixIterator object
+ */
+Radix radixCreate(uint8_t *memory, size_t memorySize);
 
 /**
  * Radix Iterator

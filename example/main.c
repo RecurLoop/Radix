@@ -16,14 +16,14 @@ int main()
     size_t radixMemorySize = 1024 * 20; // 20 KiB
     uint8_t *radixMemory = malloc(radixMemorySize);
 
-    Radix radix = {
+    Radix radix = radixCreate(
         #if RADIX_REVERT
-        .memory = radixMemory + radixMemorySize,
+        radixMemory + radixMemorySize,
         #else
-        .memory = radixMemory,
+        radixMemory,
         #endif
-        .memorySize = radixMemorySize,
-    };
+        radixMemorySize
+    );
 
     // Clear memory - show radixClear functionality
     if (radixClear(&radix))

@@ -96,6 +96,14 @@ static inline size_t bitCompare(uint8_t *a, size_t aFore, size_t aRear, uint8_t 
 
 #if !RADIX_REVERT
 
+Radix radixCreate(uint8_t *memory, size_t memorySize)
+{
+    return (Radix){
+        .memory = memory,
+        .memorySize = memorySize,
+    };
+}
+
 RadixIterator radixIterator(Radix *radix)
 {
     return (RadixIterator){
@@ -1719,6 +1727,14 @@ size_t radixMemoryUsage(Radix *radix)
 }
 
 #else
+
+Radix radixCreate(uint8_t *memory, size_t memorySize)
+{
+    return (Radix){
+        .memory = memory,
+        .memorySize = memorySize,
+    };
+}
 
 RadixIterator radixIterator(Radix *radix)
 {
