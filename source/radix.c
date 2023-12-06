@@ -1,8 +1,5 @@
 #include <radix.h>
 
-#include <stddef.h>
-#include <limits.h>
-
 typedef struct Meta {
     size_t lastNode;
     size_t lastItem;
