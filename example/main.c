@@ -179,11 +179,12 @@ int main()
     // Show radixNext, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator next:\n");
     for (RadixIterator it = radixNext(&iterator); !radixIteratorIsEmpty(&it); it = radixNext(&it)) {
-        size_t keySize = radixKeySize(&it);
-        uint8_t *key = malloc(keySize + 1);
-        key[keySize] = 0;
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
 
-        RadixError error = radixKeyCopy(&it, key, radixKeyBits(&it));
+        RadixError error = radixKeyCopy(&it, key, keyBits);
 
         printf(
             "key%s: %s\tdata: %s\n",
@@ -199,11 +200,12 @@ int main()
     // Show radixPrev, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator prev:\n");
     for (RadixIterator it = radixPrev(&iterator); !radixIteratorIsEmpty(&it); it = radixPrev(&it)) {
-        size_t keySize = radixKeySize(&it);
-        uint8_t *key = malloc(keySize + 1);
-        key[keySize] = 0;
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
 
-        RadixError error = radixKeyCopy(&it, key, radixKeyBits(&it));
+        RadixError error = radixKeyCopy(&it, key, keyBits);
 
         printf(
             "key%s: %s\tdata: %s\n",
@@ -219,11 +221,12 @@ int main()
     // Show radixNextInverse, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator next inverse (shorter keys are greater longer ones):\n");
     for (RadixIterator it = radixNextInverse(&iterator); !radixIteratorIsEmpty(&it); it = radixNextInverse(&it)) {
-        size_t keySize = radixKeySize(&it);
-        uint8_t *key = malloc(keySize + 1);
-        key[keySize] = 0;
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
 
-        RadixError error = radixKeyCopy(&it, key, radixKeyBits(&it));
+        RadixError error = radixKeyCopy(&it, key, keyBits);
 
         printf(
             "key%s: %s\tdata: %s\n",
@@ -239,11 +242,12 @@ int main()
     // Show radixPrevInverse, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator prev inverse (shorter keys are greater longer ones):\n");
     for (RadixIterator it = radixPrevInverse(&iterator); !radixIteratorIsEmpty(&it); it = radixPrevInverse(&it)) {
-        size_t keySize = radixKeySize(&it);
-        uint8_t *key = malloc(keySize + 1);
-        key[keySize] = 0;
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
 
-        RadixError error = radixKeyCopy(&it, key, radixKeyBits(&it));
+        RadixError error = radixKeyCopy(&it, key, keyBits);
 
         printf(
             "key%s: %s\tdata: %s\n",
@@ -260,11 +264,12 @@ int main()
     // Show radixEarlier, radixKeySize, radixKeyBits, radixKeyCopy functionality
     printf("Iterator Earlier (chronological-reverse order):\n");
     for (RadixIterator it = radixEarlier(&iterator); !radixIteratorIsEmpty(&it); it = radixEarlier(&it)) {
-        size_t keySize = radixKeySize(&it);
-        uint8_t *key = malloc(keySize + 1);
-        key[keySize] = 0;
+        size_t keyBits = radixKeyBits(&it);
+        size_t keySize = (keyBits + 8 - 1) / 8; // round up
+        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        key[keySize] = 0; // set terminating character at end of key
 
-        RadixError error = radixKeyCopy(&it, key, radixKeyBits(&it));
+        RadixError error = radixKeyCopy(&it, key, keyBits);
 
         printf(
             "key%s: %s\tdata: %s\n",

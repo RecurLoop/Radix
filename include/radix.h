@@ -434,27 +434,12 @@ bool radixValueIsEmpty(RadixValue *iterator);
 size_t radixKeyBits(RadixIterator *iterator);
 
 /**
- * Radix Key Size
- *  This function returns the number of key octets [ceil(keyBits / 8)].
- *  Useful for memory allocation when copying a key.
- *  @see radixKeyCopy
- *
- *  @param iterator radix iterator
- *  @return octet count of key from the given iterator
- */
-size_t radixKeySize(RadixIterator *iterator);
-
-/**
  * Radix Key Copy
  *  This function copies the key to the given address.
  *
- *  Tt is best to provide the result of
+ *  It is best to provide the result of
  *  the included function as the keyBits.
  *  @see radixKeyBits
- *
- *  The function assumes that the memory is at least large
- *  enough to accommodate keyBits bits.
- *  @see radixKeySize
  *
  *  Error returned means that an incomplete key (suffix)
  *  was copied to outputKey.

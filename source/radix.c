@@ -1585,13 +1585,6 @@ size_t radixKeyBits(RadixIterator *iterator)
     return keyBits;
 }
 
-size_t radixKeySize(RadixIterator *iterator)
-{
-    size_t count = radixKeyBits(iterator);
-
-    return (count + 8 - 1) / 8;
-}
-
 RadixError radixKeyCopy(RadixIterator *iterator, uint8_t *outputKey, size_t keyBits)
 {
     Radix *radix = iterator->radix;
@@ -3214,13 +3207,6 @@ size_t radixKeyBits(RadixIterator *iterator)
     }
 
     return keyBits;
-}
-
-size_t radixKeySize(RadixIterator *iterator)
-{
-    size_t count = radixKeyBits(iterator);
-
-    return (count + 8 - 1) / 8;
 }
 
 RadixError radixKeyCopy(RadixIterator *iterator, uint8_t *outputKey, size_t keyBits)
