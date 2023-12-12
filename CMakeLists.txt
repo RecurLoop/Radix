@@ -14,7 +14,7 @@ endif()
     endif()
 
     if (NOT DEFINED RADIX_BUILD_TYPE)
-        set(RADIX_BUILD_TYPE "SHARED")
+        set(RADIX_BUILD_TYPE "STATIC")
     endif()
 
     if (NOT DEFINED RADIX_BUILD_EXAMPLE)
