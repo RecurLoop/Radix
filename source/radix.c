@@ -759,6 +759,72 @@ bool radixMatchIsEmpty(RadixMatch *match)
     return match->node == 0;
 }
 
+RadixIterator radixPredecessor(RadixIterator *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixIterator result = {0};
+
+    result.radix = radix;
+
+    Node *node = iterator->node != 0 ? (Node *) (radix->memory + iterator->node) : NULL;
+
+    // If node is null, return null
+    if (node == NULL)
+        return result;
+
+    while (true) {
+        node = node = node->parent != 0 ? (Node *)(radix->memory + node->parent) : NULL;
+
+        if (node == NULL)
+            return result;
+
+        Item *item = (Item *)(radix->memory + node->item);
+
+        // If matched node has item nullable - return match
+        if (node->item != 0) {
+            result.node = radix->memory + sizeof(Node);
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+}
+
+RadixIterator radixPredecessorNullable(RadixIterator *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixIterator result = {0};
+
+    result.radix = radix;
+
+    Node *node = iterator->node != 0 ? (Node *) (radix->memory + iterator->node) : NULL;
+
+    // If node is null, return null
+    if (node == NULL)
+        return result;
+
+    while (true) {
+        node = node = node->parent != 0 ? (Node *)(radix->memory + node->parent) : NULL;
+
+        if (node == NULL)
+            return result;
+
+        Item *item = (Item *)(radix->memory + node->item);
+
+        // If matched node has item not nullable - return match
+        if (node->item != 0 && item->size > 0) {
+            result.node = radix->memory + sizeof(Node);
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+}
+
 RadixIterator radixPrev(RadixIterator *iterator)
 {
     Radix *radix = iterator->radix;
@@ -2524,6 +2590,72 @@ RadixIterator radixMatchToIterator(RadixMatch *match)
 bool radixMatchIsEmpty(RadixMatch *match)
 {
     return match->node == 0;
+}
+
+RadixIterator radixPredecessor(RadixIterator *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixIterator result = {0};
+
+    result.radix = radix;
+
+    Node *node = iterator->node != 0 ? (Node *) (radix->memory - sizeof(Node) - iterator->node) : NULL;
+
+    // If node is null, return null
+    if (node == NULL)
+        return result;
+
+    while (true) {
+        node = node = node->parent != 0 ? (Node *)(radix->memory - sizeof(Node) - node->parent) : NULL;
+
+        if (node == NULL)
+            return result;
+
+        Item *item = (Item *)(radix->memory - sizeof(Item) - node->item);
+
+        // If matched node has item not nullable - return match
+        if (node->item != 0) {
+            result.node = radix->memory - (uint8_t *)node - sizeof(Node);
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
+}
+
+RadixIterator radixPredecessorNullable(RadixIterator *iterator)
+{
+    Radix *radix = iterator->radix;
+
+    RadixIterator result = {0};
+
+    result.radix = radix;
+
+    Node *node = iterator->node != 0 ? (Node *) (radix->memory - sizeof(Node) - iterator->node) : NULL;
+
+    // If node is null, return null
+    if (node == NULL)
+        return result;
+
+    while (true) {
+        node = node = node->parent != 0 ? (Node *)(radix->memory - sizeof(Node) - node->parent) : NULL;
+
+        if (node == NULL)
+            return result;
+
+        Item *item = (Item *)(radix->memory - sizeof(Item) - node->item);
+
+        // If matched node has item not nullable - return match
+        if (node->item != 0 && item->size > 0) {
+            result.node = radix->memory - (uint8_t *)node - sizeof(Node);
+            result.data = (uint8_t*)item + sizeof(Item);
+            result.dataSize = item->size;
+
+            return result;
+        }
+    }
 }
 
 RadixIterator radixPrev(RadixIterator *iterator)

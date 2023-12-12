@@ -262,6 +262,30 @@ RadixIterator radixMatchToIterator(RadixMatch *match);
 bool radixMatchIsEmpty(RadixMatch *match);
 
 /**
+ * Radix Predecessor (lexicographical order)
+ *  This function will return an iterator pointing to predecessor (parent).
+ *  returns only an iterator with non-null data.
+ *
+ *  Passing an empty iterator returns an empty iterator.
+ *
+ *  @param iterator radix iterator
+ *  @return radix iterator object
+ */
+RadixIterator radixPredecessor(RadixIterator *iterator);
+
+/**
+ * Radix Predecessor (lexicographical order)
+ *  This function will return an iterator pointing to predecessor (parent).
+ *  returns even if the value is null.
+ *
+ *  Passing an empty iterator returns an empty iterator.
+ *
+ *  @param iterator radix iterator
+ *  @return radix iterator object
+ */
+RadixIterator radixPredecessorNullable(RadixIterator *iterator);
+
+/**
  * Radix Prev (lexicographical order)
  *  This function will return an iterator pointing to smaller element.
  *  returns only an iterator with non-null data.
