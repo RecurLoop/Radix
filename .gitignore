@@ -6,11 +6,11 @@
 
 !CMakeLists.txt
 
-!example
-!example/**
-
 !include
 !include/**
 
 !source
 !source/**
+
+!test
+!test/**

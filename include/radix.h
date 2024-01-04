@@ -1,6 +1,7 @@
 #ifndef __RADIX_H
 #define __RADIX_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -126,7 +127,7 @@ Radix radixCreate(uint8_t *memory, size_t memorySize);
 RadixIterator radixIterator(Radix *radix);
 
 /**
- * Radix Value
+ * Radix Value Iterator
  *  This function creates a radix value iterator.
  *
  *  When this function is called, the iterator
@@ -135,7 +136,7 @@ RadixIterator radixIterator(Radix *radix);
  *  @param radix radix tree
  *  @return RadixValue object
  */
-RadixValue radixValue(Radix *radix);
+RadixValue radixValueIterator(Radix *radix);
 
 /**
  * Radix Insert

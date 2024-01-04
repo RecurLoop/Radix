@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.27.4)
+cmake_minimum_required(VERSION 3.25.1)
 
 if (NOT CMAKE_PROJECT_NAME OR "${CMAKE_PROJECT_NAME}" STREQUAL "radix")
     project(radix C)
@@ -17,27 +17,24 @@ endif()
         set(RADIX_BUILD_TYPE "STATIC")
     endif()
 
-    if (NOT DEFINED RADIX_BUILD_EXAMPLE)
-        set(RADIX_BUILD_EXAMPLE ON)
-    endif()
-
-    if (NOT DEFINED RADIX_REVERT)
-        set(RADIX_REVERT 0)
+    if (NOT DEFINED RADIX_TEST)
+        set(RADIX_TEST TRUE)
     endif()
 
 # Build
-    add_library(radix "${RADIX_BUILD_TYPE}" "${CMAKE_CURRENT_SOURCE_DIR}/source/radix.c")
+    add_library(radix "${RADIX_BUILD_TYPE}" "source/radix.c")
 
-    target_include_directories(radix PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_include_directories(radix PRIVATE "include")
 
-    target_compile_definitions(radix PRIVATE RADIX_REVERT=${RADIX_REVERT})
+# Test
+    if(RADIX_TEST)
+        include(CTest)
 
-    if (RADIX_BUILD_EXAMPLE)
-        add_executable(radix-example "${CMAKE_CURRENT_SOURCE_DIR}/example/main.c")
+        add_executable(radix_test "test/main.c")
 
-        target_link_libraries(radix-example radix)
+        target_link_libraries(radix_test radix)
 
-        target_include_directories(radix-example PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+        target_include_directories(radix_test PRIVATE "include")
 
-        target_compile_definitions(radix-example PRIVATE RADIX_REVERT=${RADIX_REVERT})
+        add_test(NAME radix_test COMMAND $<TARGET_FILE:radix_test>)
     endif()
