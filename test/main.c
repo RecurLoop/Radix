@@ -5,15 +5,15 @@
 #include <radix.h>
 
 typedef struct TestCase {
-    char *key;
-    char *data;
+    unsigned char *key;
+    unsigned char *data;
 } TestCase;
 
 int main()
 {
     // Prepare radix
     size_t radixMemorySize = 1024 * 20; // 20 KiB
-    uint8_t *radixMemory = malloc(radixMemorySize);
+    unsigned char *radixMemory = malloc(radixMemorySize);
 
     Radix radix = radixCreate(radixMemory, radixMemorySize);
 
@@ -69,9 +69,9 @@ int main()
     RadixValue valueIterator = radixValueIterator(&radix);
 
     for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
-        uint8_t *key = (uint8_t *)cases[i].key;
+        unsigned char *key = cases[i].key;
         size_t keySize = strlen(cases[i].key) * 8;
-        uint8_t *data = (uint8_t *)cases[i].data;
+        unsigned char *data = cases[i].data;
         size_t dataSize = data == NULL ? 0 : strlen(cases[i].data) + 1;
 
         RadixValue insertValue = radixInsert(&iterator, key, keySize, data, dataSize);
@@ -83,8 +83,9 @@ int main()
     }
 
     // Show radixMatchFirst functionality
+    printf("First match:\n");
     for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
-        RadixMatch match = radixMatchFirst(&iterator, (uint8_t *)cases[i].key, strlen(cases[i].key) * 8);
+        RadixMatch match = radixMatchFirst(&iterator, cases[i].key, strlen(cases[i].key) * 8);
 
         if (radixMatchIsEmpty(&match)) {
             printf(
@@ -93,7 +94,7 @@ int main()
                 match.matchedBits
             );
         } else {
-            printf("key: %s\tvalue: %s \tmatched bits: %lld \n", cases[i].key, (char*)match.data, match.matchedBits);
+            printf("key: %s\tvalue: %s \tmatched bits: %lld \n", cases[i].key, match.data, match.matchedBits);
         }
     }
     printf("\n");
@@ -101,7 +102,7 @@ int main()
     // Show radixMatchLongest functionality
     printf("Longest match:\n");
     for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
-        RadixMatch match = radixMatchLongest(&iterator, (uint8_t *)cases[i].key, strlen(cases[i].key) * 8);
+        RadixMatch match = radixMatchLongest(&iterator, cases[i].key, strlen(cases[i].key) * 8);
 
         if (radixMatchIsEmpty(&match)) {
             printf(
@@ -110,7 +111,7 @@ int main()
                 match.matchedBits
             );
         } else {
-            printf("key: %s \tvalue: %s \tmatched bits: %lld | ", cases[i].key, (char*)match.data, match.matchedBits);
+            printf("key: %s \tvalue: %s \tmatched bits: %lld | ", cases[i].key, match.data, match.matchedBits);
 
             RadixIterator it = radixMatchToIterator(&match);
 
@@ -118,7 +119,7 @@ int main()
 
             size_t keyBits = radixKeyBits(&it);
             size_t keySize = (keyBits + 8 - 1) / 8; // round up
-            uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+            unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
             key[keySize] = 0; // set terminating character at end of key
 
             RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -127,7 +128,7 @@ int main()
                 "predecessor%s: %s\tdata: %s\n",
                 error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
                 key,
-                (char*)it.data
+                it.data
             );
 
             free(key);
@@ -140,7 +141,7 @@ int main()
     for (RadixIterator it = radixNext(&iterator); !radixIteratorIsEmpty(&it); it = radixNext(&it)) {
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
         RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -149,7 +150,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)it.data
+            it.data
         );
 
         free(key);
@@ -161,7 +162,7 @@ int main()
     for (RadixIterator it = radixPrev(&iterator); !radixIteratorIsEmpty(&it); it = radixPrev(&it)) {
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
         RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -170,7 +171,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)it.data
+            it.data
         );
 
         free(key);
@@ -182,7 +183,7 @@ int main()
     for (RadixIterator it = radixNextInverse(&iterator); !radixIteratorIsEmpty(&it); it = radixNextInverse(&it)) {
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
         RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -191,7 +192,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)it.data
+            it.data
         );
 
         free(key);
@@ -203,7 +204,7 @@ int main()
     for (RadixIterator it = radixPrevInverse(&iterator); !radixIteratorIsEmpty(&it); it = radixPrevInverse(&it)) {
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
         RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -212,7 +213,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)it.data
+            it.data
         );
 
         free(key);
@@ -224,7 +225,7 @@ int main()
     for (RadixIterator it = radixEarlier(&iterator); !radixIteratorIsEmpty(&it); it = radixEarlier(&it)) {
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
         RadixError error = radixKeyCopy(&it, key, keyBits);
@@ -233,7 +234,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)it.data
+            it.data
         );
 
         free(key);
@@ -247,7 +248,7 @@ int main()
 
         size_t keyBits = radixKeyBits(&it);
         size_t keySize = (keyBits + 8 - 1) / 8; // round up
-        uint8_t *key = malloc(keySize + 1); //add 1 for the terminating character
+        unsigned char *key = malloc(keySize + 1); //add 1 for the terminating character
         key[keySize] = 0; // set terminating character at end of key
 
 
@@ -257,7 +258,7 @@ int main()
             "key%s: %s\tdata: %s\n",
             error == RADIX_OUT_OF_MEMORY ? "(its only suffix, becouse there is not enought memory)" : "",
             key,
-            (char*)val.data
+            val.data
         );
 
         free(key);

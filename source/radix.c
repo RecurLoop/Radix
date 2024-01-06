@@ -1,5 +1,7 @@
 #include <radix.h>
 
+#include <limits.h>
+
 typedef struct Meta {
     // Stores the last radix node(chronologically)
     size_t lastNode;
@@ -25,8 +27,8 @@ typedef struct Node {
 
     struct {
         // Stores the bit offset (cooperates with keyFore and keyRear)
-        uint8_t keyForeOffset : 3;
-        uint8_t keyRearOffset : 3;
+        unsigned char keyForeOffset : 3;
+        unsigned char keyRearOffset : 3;
     };
 
     // Stores item
@@ -50,24 +52,24 @@ typedef struct Item {
     size_t lastItem;
 } Item;
 
-static inline bool bitGet(uint8_t *stream, size_t bitIndex)
+static inline bool bitGet(unsigned char *stream, size_t bitIndex)
 {
     if (stream == NULL)
         return false;
 
-    uint8_t mask = 1 << (8 - 1 - (bitIndex % 8));
-    stream += bitIndex / 8;
+    unsigned char mask = 1 << (CHAR_BIT - 1 - (bitIndex % CHAR_BIT));
+    stream += bitIndex / CHAR_BIT;
 
     return *stream & mask;
 }
 
-static inline void bitSet(uint8_t *stream, size_t bitIndex, bool value)
+static inline void bitSet(unsigned char *stream, size_t bitIndex, bool value)
 {
     if (stream == NULL)
         return;
 
-    uint8_t mask = 1 << (8 - 1 - (bitIndex % 8));
-    stream += bitIndex / 8;
+    unsigned char mask = 1 << (CHAR_BIT - 1 - (bitIndex % CHAR_BIT));
+    stream += bitIndex / CHAR_BIT;
 
     if (value)
         *stream |= mask;
@@ -75,30 +77,50 @@ static inline void bitSet(uint8_t *stream, size_t bitIndex, bool value)
         *stream &= ~mask;
 }
 
-static inline void bitCopy(uint8_t *input, size_t inputOffset, uint8_t *output, size_t outputOffset, size_t count)
+static inline void bitCopy(unsigned char *input, size_t inputOffset, unsigned char *output, size_t outputOffset, size_t count)
 {
+    // This function requires optimization to use full registers using
+    // shift operations, xor, __buildin_ffs (or similar), avx operations, etc.
+    // However, since these optimizations limit compatibility,
+    // I'm leaving it as it is for now
+
     for (size_t i = 0; i < count; i++) {
         bitSet(output, outputOffset + i, bitGet(input, inputOffset + i));
     }
 }
 
-static inline size_t bitCompare(uint8_t *a, size_t aFore, size_t aRear, uint8_t *b, size_t bFore, size_t bRear)
+static inline size_t bitCompare(unsigned char *a, size_t aFore, size_t aRear, unsigned char *b, size_t bFore, size_t bRear)
 {
+    // This function requires optimization to use full registers using
+    // shift operations, xor, __buildin_ffs (or similar), avx operations, etc.
+    // However, since these optimizations limit compatibility,
+    // I'm leaving it as it is for now
+
     size_t aSize = aRear - aFore;
     size_t bSize = bRear - bFore;
 
-    size_t minSize = aSize < bSize ? aSize : bSize;
+    size_t maxSize = aSize < bSize ? aSize : bSize;
 
-    for (size_t i = 0; i < minSize; i++) {
+    for (size_t i = 0; i < maxSize; i++) {
         if (bitGet(a, aFore + i) != bitGet(b, bFore + i)) {
             return i;
         }
     }
 
-    return minSize;
+    return maxSize;
 }
 
-Radix radixCreate(uint8_t *memory, size_t memorySize)
+static inline void byteCopy(unsigned char *destination, const unsigned char* source, size_t size)
+{
+    // Simple implementation memcpy
+    // (I don't want to have any dependencies in the code, hence this implementation)
+
+    for (size_t i = 0; i < size; i++) {
+        destination[i] = source[i];
+    }
+}
+
+Radix radixCreate(unsigned char *memory, size_t memorySize)
 {
     return (Radix){
         .memory = memory,
@@ -126,7 +148,7 @@ RadixValue radixValueIterator(Radix *radix)
     };
 }
 
-RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, uint8_t *data, size_t dataSize)
+RadixValue radixInsert(RadixIterator* iterator, unsigned char *key, size_t keyBits, unsigned char *data, size_t dataSize)
 {
     Radix *radix = iterator->radix;
 
@@ -157,7 +179,7 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
 
             // Write meta information
             *meta = (Meta) {
-                .lastNode = (uint8_t *)node - radix->memory,
+                .lastNode = (unsigned char *)node - radix->memory,
                 .lastItem = 0,
                 .structureEnd = neededMemory,
             };
@@ -177,7 +199,7 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
         // If there is no child ..create it and end iteration
         if (childAddress == 0) {
             // Calculate needed memory
-            size_t neededMemory = sizeof(Node) + ((keyBits - keyPos + 8 - 1) / 8);
+            size_t neededMemory = sizeof(Node) + ((keyBits - keyPos + CHAR_BIT - 1) / CHAR_BIT);
 
             // Check free memory
             if (neededMemory > radix->memorySize - meta->structureEnd) {
@@ -186,17 +208,17 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
 
             // Compose memory
             Node *newNode = (Node*) (radix->memory + meta->structureEnd);
-            uint8_t *newKey = (uint8_t *) newNode + sizeof(Node);
+            unsigned char *newKey = (unsigned char *) newNode + sizeof(Node);
 
             // Write node
             *newNode = (Node) {
-                .parent = (uint8_t *)node - radix->memory,
+                .parent = (unsigned char *)node - radix->memory,
                 .childSmaller = 0,
                 .childGreater = 0,
                 .keyFore = newKey - radix->memory,
-                .keyRear = newKey - radix->memory + ((keyBits - keyPos) / 8),
+                .keyRear = newKey - radix->memory + ((keyBits - keyPos) / CHAR_BIT),
                 .keyForeOffset = 0,
-                .keyRearOffset = ((keyBits - keyPos) % 8),
+                .keyRearOffset = ((keyBits - keyPos) % CHAR_BIT),
                 .lastNode = meta->lastNode,
                 .item = 0,
             };
@@ -207,10 +229,10 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
             // Set new node as node child
             size_t *nodeChild = direction ? &(node->childGreater) : &(node->childSmaller);
 
-            *nodeChild = (uint8_t *)newNode - radix->memory;
+            *nodeChild = (unsigned char *)newNode - radix->memory;
 
             // Update meta information
-            meta->lastNode = (uint8_t *)newNode - radix->memory;
+            meta->lastNode = (unsigned char *)newNode - radix->memory;
             meta->structureEnd += neededMemory;
 
             // Assign new node as current node
@@ -222,10 +244,10 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeyBits = testKeyRear - testKeyFore;
 
@@ -247,35 +269,35 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
 
             // Get split direction
             bool splitDirection = bitGet(
-                (uint8_t *) (radix->memory + testNode->keyFore),
+                (unsigned char *) (radix->memory + testNode->keyFore),
                 testNode->keyForeOffset + matchedBits
             );
 
             // Write split node
             *newNode = (Node) {
                 .parent = testNode->parent,
-                .childSmaller = splitDirection ? 0 : (uint8_t *)testNode - radix->memory,
-                .childGreater = splitDirection ? (uint8_t *)testNode - radix->memory : 0,
+                .childSmaller = splitDirection ? 0 : (unsigned char *)testNode - radix->memory,
+                .childGreater = splitDirection ? (unsigned char *)testNode - radix->memory : 0,
                 .keyFore = testNode->keyFore,
-                .keyRear = testNode->keyFore + ((testNode->keyForeOffset + matchedBits) / 8),
+                .keyRear = testNode->keyFore + ((testNode->keyForeOffset + matchedBits) / CHAR_BIT),
                 .keyForeOffset = testNode->keyForeOffset,
-                .keyRearOffset = (testNode->keyForeOffset + matchedBits) % 8,
+                .keyRearOffset = (testNode->keyForeOffset + matchedBits) % CHAR_BIT,
                 .lastNode = meta->lastNode,
                 .item = 0,
             };
 
             // Update splited node
-            testNode->parent = (uint8_t *)newNode - radix->memory;
+            testNode->parent = (unsigned char *)newNode - radix->memory;
             testNode->keyFore = newNode->keyRear;
             testNode->keyForeOffset = newNode->keyRearOffset;
 
             // Set new node as node child
             size_t *nodeChild = direction ? &(node->childGreater) : &(node->childSmaller);
 
-            *nodeChild = (uint8_t *)newNode - radix->memory;
+            *nodeChild = (unsigned char *)newNode - radix->memory;
 
             // Update meta information
-            meta->lastNode = (uint8_t *)newNode - radix->memory;
+            meta->lastNode = (unsigned char *)newNode - radix->memory;
             meta->structureEnd += neededMemory;
 
             // Assign new node as fully maching node
@@ -300,30 +322,28 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
 
         // Compose memory
         Item *newItem = (Item *) (radix->memory + meta->structureEnd);
-        uint8_t *newData = (uint8_t *)newItem + sizeof(Item);
+        unsigned char *newData = (unsigned char *)newItem + sizeof(Item);
 
         // Write item
         *newItem = (Item) {
             .size = dataSize,
-            .node = (uint8_t *)node - radix->memory,
+            .node = (unsigned char *)node - radix->memory,
             .previous = node->item,
             .lastItem = meta->lastItem,
         };
 
         // Write data
-        for (size_t i = 0; i < dataSize; i++) {
-            newData[i] = data[i];
-        }
+        byteCopy(newData, data, dataSize);
 
         // Update node
-        node->item = (uint8_t *)newItem - radix->memory;
+        node->item = (unsigned char *)newItem - radix->memory;
 
         // Update meta information
-        meta->lastItem = (uint8_t *)newItem - radix->memory;
+        meta->lastItem = (unsigned char *)newItem - radix->memory;
         meta->structureEnd += neededMemory;
 
         // Update result
-        result.item = (uint8_t *)newItem - radix->memory;
+        result.item = (unsigned char *)newItem - radix->memory;
         result.data = newData;
         result.dataSize = dataSize;
     }
@@ -331,12 +351,12 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
     return result;
 }
 
-RadixValue radixRemove(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixValue radixRemove(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     return radixInsert(iterator, key, keyBits, NULL, 0);
 }
 
-RadixMatch radixMatch(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatch(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -364,9 +384,9 @@ RadixMatch radixMatch(RadixIterator* iterator, uint8_t *key, size_t keyBits)
 
             // If matched node has item (not nullable) - update match
             if (item && item->size > 0) {
-                result.node = (uint8_t *)node - radix->memory;
+                result.node = (unsigned char *)node - radix->memory;
                 result.matchedBits = keyPos;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
             }
 
@@ -386,10 +406,10 @@ RadixMatch radixMatch(RadixIterator* iterator, uint8_t *key, size_t keyBits)
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -408,7 +428,7 @@ RadixMatch radixMatch(RadixIterator* iterator, uint8_t *key, size_t keyBits)
     return result;
 }
 
-RadixMatch radixMatchNullable(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatchNullable(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -436,9 +456,9 @@ RadixMatch radixMatchNullable(RadixIterator* iterator, uint8_t *key, size_t keyB
 
             // If matched node has item (nullable) - update match
             if (item) {
-                result.node = (uint8_t *)node - radix->memory;
+                result.node = (unsigned char *)node - radix->memory;
                 result.matchedBits = keyPos;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
             }
 
@@ -458,10 +478,10 @@ RadixMatch radixMatchNullable(RadixIterator* iterator, uint8_t *key, size_t keyB
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -480,7 +500,7 @@ RadixMatch radixMatchNullable(RadixIterator* iterator, uint8_t *key, size_t keyB
     return result;
 }
 
-RadixMatch radixMatchFirst(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatchFirst(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -506,9 +526,9 @@ RadixMatch radixMatchFirst(RadixIterator* iterator, uint8_t *key, size_t keyBits
 
         // If matched node has item (not nullable) - update match and break
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
+            result.node = (unsigned char *)node - radix->memory;
             result.matchedBits = keyPos;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             break;
@@ -531,10 +551,10 @@ RadixMatch radixMatchFirst(RadixIterator* iterator, uint8_t *key, size_t keyBits
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -553,7 +573,7 @@ RadixMatch radixMatchFirst(RadixIterator* iterator, uint8_t *key, size_t keyBits
     return result;
 }
 
-RadixMatch radixMatchFirstNullable(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatchFirstNullable(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -579,9 +599,9 @@ RadixMatch radixMatchFirstNullable(RadixIterator* iterator, uint8_t *key, size_t
 
         // If matched node has item (nullable) - update match and break
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
+            result.node = (unsigned char *)node - radix->memory;
             result.matchedBits = keyPos;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             break;
@@ -604,10 +624,10 @@ RadixMatch radixMatchFirstNullable(RadixIterator* iterator, uint8_t *key, size_t
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -626,7 +646,7 @@ RadixMatch radixMatchFirstNullable(RadixIterator* iterator, uint8_t *key, size_t
     return result;
 }
 
-RadixMatch radixMatchLongest(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatchLongest(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -651,9 +671,9 @@ RadixMatch radixMatchLongest(RadixIterator* iterator, uint8_t *key, size_t keyBi
 
         // If matched node has item (not nullable) - update match and continue
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
+            result.node = (unsigned char *)node - radix->memory;
             result.matchedBits = keyPos;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
         }
 
@@ -674,10 +694,10 @@ RadixMatch radixMatchLongest(RadixIterator* iterator, uint8_t *key, size_t keyBi
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -696,7 +716,7 @@ RadixMatch radixMatchLongest(RadixIterator* iterator, uint8_t *key, size_t keyBi
     return result;
 }
 
-RadixMatch radixMatchLongestNullable(RadixIterator* iterator, uint8_t *key, size_t keyBits)
+RadixMatch radixMatchLongestNullable(RadixIterator* iterator, unsigned char *key, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
@@ -722,9 +742,9 @@ RadixMatch radixMatchLongestNullable(RadixIterator* iterator, uint8_t *key, size
 
         // If matched node has item (nullable) - update match and continue
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
+            result.node = (unsigned char *)node - radix->memory;
             result.matchedBits = keyPos;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
         }
 
@@ -745,10 +765,10 @@ RadixMatch radixMatchLongestNullable(RadixIterator* iterator, uint8_t *key, size
         // Check if the key is correct
         Node *testNode = (Node *) (radix->memory + childAddress);
 
-        uint8_t *testKey = (uint8_t *) (radix->memory + testNode->keyFore);
+        unsigned char *testKey = (unsigned char *) (radix->memory + testNode->keyFore);
 
         size_t testKeyFore = testNode->keyForeOffset;
-        size_t testKeyRear = 8 * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
+        size_t testKeyRear = CHAR_BIT * (testNode->keyRear - testNode->keyFore) + testNode->keyRearOffset;
 
         size_t testKeySize = testKeyRear - testKeyFore;
 
@@ -806,8 +826,8 @@ RadixIterator radixPredecessor(RadixIterator *iterator)
 
         // If matched node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -840,8 +860,8 @@ RadixIterator radixPredecessorNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -879,8 +899,8 @@ RadixIterator radixPrev(RadixIterator *iterator)
 
         // If matched node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -900,7 +920,7 @@ RadixIterator radixPrev(RadixIterator *iterator)
         if (!parentNode)
             return result;
 
-        if (parentNode->childSmaller != 0 && parentNode->childSmaller != (uint8_t*)node - radix->memory) {
+        if (parentNode->childSmaller != 0 && parentNode->childSmaller != (unsigned char*)node - radix->memory) {
             node = (Node *) (radix->memory + parentNode->childSmaller);
 
             // Move to "parent-child-child" or "parent-child"
@@ -916,8 +936,8 @@ RadixIterator radixPrev(RadixIterator *iterator)
 
         // If matched node has item not (nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -955,8 +975,8 @@ RadixIterator radixPrevNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -976,7 +996,7 @@ RadixIterator radixPrevNullable(RadixIterator *iterator)
         if (!parentNode)
             return result;
 
-        if (parentNode->childSmaller != 0 && parentNode->childSmaller != (uint8_t*)node - radix->memory) {
+        if (parentNode->childSmaller != 0 && parentNode->childSmaller != (unsigned char*)node - radix->memory) {
             node = (Node *) (radix->memory + parentNode->childSmaller);
 
             // Move to "parent-child-child" or "parent-child"
@@ -992,8 +1012,8 @@ RadixIterator radixPrevNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1026,8 +1046,8 @@ RadixIterator radixNext(RadixIterator *iterator)
 
         // If matched node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1049,8 +1069,8 @@ RadixIterator radixNext(RadixIterator *iterator)
 
             // If matched node has item (not nullable) - this is the object you are looking for
             if (item && item->size > 0) {
-                result.node = (uint8_t *)node - radix->memory;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.node = (unsigned char *)node - radix->memory;
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
 
                 return result;
@@ -1067,7 +1087,7 @@ RadixIterator radixNext(RadixIterator *iterator)
             if (!parentNode)
                 return result;
 
-            if (parentNode->childGreater != 0 && parentNode->childGreater != (uint8_t*)node - radix->memory) {
+            if (parentNode->childGreater != 0 && parentNode->childGreater != (unsigned char*)node - radix->memory) {
                 node = (Node *) (radix->memory + parentNode->childGreater);
 
                 break;
@@ -1080,8 +1100,8 @@ RadixIterator radixNext(RadixIterator *iterator)
 
         // If matched node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1114,8 +1134,8 @@ RadixIterator radixNextNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1137,8 +1157,8 @@ RadixIterator radixNextNullable(RadixIterator *iterator)
 
             // If matched node has item (nullable) - this is the object you are looking for
             if (item) {
-                result.node = (uint8_t *)node - radix->memory;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.node = (unsigned char *)node - radix->memory;
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
 
                 return result;
@@ -1155,7 +1175,7 @@ RadixIterator radixNextNullable(RadixIterator *iterator)
             if (!parentNode)
                 return result;
 
-            if (parentNode->childGreater != 0 && parentNode->childGreater != (uint8_t*)node - radix->memory) {
+            if (parentNode->childGreater != 0 && parentNode->childGreater != (unsigned char*)node - radix->memory) {
                 node = (Node *) (radix->memory + parentNode->childGreater);
 
                 break;
@@ -1168,8 +1188,8 @@ RadixIterator radixNextNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1202,8 +1222,8 @@ RadixIterator radixPrevInverse(RadixIterator *iterator)
 
         // If matched node has item not nullable - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1225,8 +1245,8 @@ RadixIterator radixPrevInverse(RadixIterator *iterator)
 
             // If matched node has item not nullable - this is the object you are looking for
             if (item && item->size > 0) {
-                result.node = (uint8_t *)node - radix->memory;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.node = (unsigned char *)node - radix->memory;
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
 
                 return result;
@@ -1243,7 +1263,7 @@ RadixIterator radixPrevInverse(RadixIterator *iterator)
             if (!parentNode)
                 return result;
 
-            if (parentNode->childSmaller != 0 && parentNode->childSmaller != (uint8_t*)node - radix->memory) {
+            if (parentNode->childSmaller != 0 && parentNode->childSmaller != (unsigned char*)node - radix->memory) {
                 node = (Node *) (radix->memory + parentNode->childSmaller);
 
                 break;
@@ -1256,8 +1276,8 @@ RadixIterator radixPrevInverse(RadixIterator *iterator)
 
         // If matched node has item not nullable - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1290,8 +1310,8 @@ RadixIterator radixPrevInverseNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1313,8 +1333,8 @@ RadixIterator radixPrevInverseNullable(RadixIterator *iterator)
 
             // If matched node has item nullable - this is the object you are looking for
             if (item) {
-                result.node = (uint8_t *)node - radix->memory;
-                result.data = (uint8_t*)item + sizeof(Item);
+                result.node = (unsigned char *)node - radix->memory;
+                result.data = (unsigned char*)item + sizeof(Item);
                 result.dataSize = item->size;
 
                 return result;
@@ -1331,7 +1351,7 @@ RadixIterator radixPrevInverseNullable(RadixIterator *iterator)
             if (!parentNode)
                 return result;
 
-            if (parentNode->childSmaller != 0 && parentNode->childSmaller != (uint8_t*)node - radix->memory) {
+            if (parentNode->childSmaller != 0 && parentNode->childSmaller != (unsigned char*)node - radix->memory) {
                 node = (Node *) (radix->memory + parentNode->childSmaller);
 
                 break;
@@ -1344,8 +1364,8 @@ RadixIterator radixPrevInverseNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1383,8 +1403,8 @@ RadixIterator radixNextInverse(RadixIterator *iterator)
 
         // If matched node has item not nullable - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1405,7 +1425,7 @@ RadixIterator radixNextInverse(RadixIterator *iterator)
             return result;
 
         // Move
-        if (parentNode->childGreater != 0 && parentNode->childGreater != (uint8_t*)node - radix->memory) {
+        if (parentNode->childGreater != 0 && parentNode->childGreater != (unsigned char*)node - radix->memory) {
             node = (Node *) (radix->memory + parentNode->childGreater);
 
             // Move to "parent-child-child" or "parent-child"
@@ -1421,8 +1441,8 @@ RadixIterator radixNextInverse(RadixIterator *iterator)
 
         // If matched node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1460,8 +1480,8 @@ RadixIterator radixNextInverseNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1482,7 +1502,7 @@ RadixIterator radixNextInverseNullable(RadixIterator *iterator)
             return result;
 
         // Move
-        if (parentNode->childGreater != 0 && parentNode->childGreater != (uint8_t*)node - radix->memory) {
+        if (parentNode->childGreater != 0 && parentNode->childGreater != (unsigned char*)node - radix->memory) {
             node = (Node *) (radix->memory + parentNode->childGreater);
 
             // Move to "parent-child-child" or "parent-child"
@@ -1498,8 +1518,8 @@ RadixIterator radixNextInverseNullable(RadixIterator *iterator)
 
         // If matched node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1530,8 +1550,8 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         // If node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1549,8 +1569,8 @@ RadixIterator radixEarlier(RadixIterator *iterator)
 
         // If node has item (not nullable) - this is the object you are looking for
         if (item && item->size > 0) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1581,8 +1601,8 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         // If node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1601,8 +1621,8 @@ RadixIterator radixEarlierNullable(RadixIterator *iterator)
 
         // If node has item (nullable) - this is the object you are looking for
         if (item) {
-            result.node = (uint8_t *)node - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.node = (unsigned char *)node - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1628,8 +1648,8 @@ RadixValue radixIteratorToValue(RadixIterator *iterator)
     if (!item)
         return result;
 
-    result.item = (uint8_t*)item - radix->memory;
-    result.data = (uint8_t*)item + sizeof(Item);
+    result.item = (unsigned char*)item - radix->memory;
+    result.data = (unsigned char*)item + sizeof(Item);
     result.dataSize = item->size;
 
     return result;
@@ -1659,8 +1679,8 @@ RadixValue radixValuePrevious(RadixValue *iterator)
         item = item->previous != 0 ? (Item *) (radix->memory + item->previous) : NULL;
 
         if (item && item->size > 0) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t *)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char *)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1684,8 +1704,8 @@ RadixValue radixValuePreviousNullable(RadixValue *iterator)
         item = item->previous != 0 ? (Item *) (radix->memory + item->previous) : NULL;
 
         if (item) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t *)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char *)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1712,8 +1732,8 @@ RadixValue radixValueEarlier(RadixValue *iterator)
         item = meta->lastItem != 0 ? (Item *) (radix->memory + meta->lastItem) : NULL;
 
         if (item && item->size > 0) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1725,8 +1745,8 @@ RadixValue radixValueEarlier(RadixValue *iterator)
         item = item->lastItem != 0 ? (Item *) (radix->memory + item->lastItem) : NULL;
 
         if (item && item->size > 0) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1753,8 +1773,8 @@ RadixValue radixValueEarlierNullable(RadixValue *iterator)
         item = meta->lastItem != 0 ? (Item *) (radix->memory + meta->lastItem) : NULL;
 
         if (item) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1766,8 +1786,8 @@ RadixValue radixValueEarlierNullable(RadixValue *iterator)
         item = item->lastItem != 0 ? (Item *) (radix->memory + item->lastItem) : NULL;
 
         if (item) {
-            result.item = (uint8_t *)item - radix->memory;
-            result.data = (uint8_t*)item + sizeof(Item);
+            result.item = (unsigned char *)item - radix->memory;
+            result.data = (unsigned char*)item + sizeof(Item);
             result.dataSize = item->size;
 
             return result;
@@ -1816,7 +1836,7 @@ size_t radixKeyBits(RadixIterator *iterator)
     size_t keyBits = 0;
 
     while(node) {
-        keyBits += 8 * (node->keyRear - node->keyFore) + node->keyRearOffset - node->keyForeOffset;
+        keyBits += CHAR_BIT * (node->keyRear - node->keyFore) + node->keyRearOffset - node->keyForeOffset;
 
         node = node->parent != 0 ? (Node *) (radix->memory + node->parent) : NULL;
     }
@@ -1824,27 +1844,27 @@ size_t radixKeyBits(RadixIterator *iterator)
     return keyBits;
 }
 
-RadixError radixKeyCopy(RadixIterator *iterator, uint8_t *outputKey, size_t keyBits)
+RadixError radixKeyCopy(RadixIterator *iterator, unsigned char *outputKey, size_t keyBits)
 {
     Radix *radix = iterator->radix;
 
     Node *node = iterator->node != 0 ? (Node *) (radix->memory + iterator->node) : NULL;
 
     while (node) {
-        size_t nodeKeyBits = 8 * (node->keyRear - node->keyFore) + node->keyRearOffset - node->keyForeOffset;
+        size_t nodeKeyBits = CHAR_BIT * (node->keyRear - node->keyFore) + node->keyRearOffset - node->keyForeOffset;
 
         // If its out of memory.. copy only suffix of nodeKey and return error
         if (keyBits < nodeKeyBits) {
             size_t nodeKeySuffixOffset = nodeKeyBits + node->keyForeOffset - keyBits;
 
-            bitCopy((uint8_t *) (radix->memory + node->keyFore), nodeKeySuffixOffset, outputKey, keyBits, keyBits);
+            bitCopy(radix->memory + node->keyFore, nodeKeySuffixOffset, outputKey, keyBits, keyBits);
 
             return RADIX_OUT_OF_MEMORY;
         }
 
         keyBits -= nodeKeyBits;
 
-        bitCopy((uint8_t *) (radix->memory + node->keyFore), node->keyForeOffset, outputKey, keyBits, nodeKeyBits);
+        bitCopy(radix->memory + node->keyFore, node->keyForeOffset, outputKey, keyBits, nodeKeyBits);
 
         node = node->parent != 0 ? (Node *) (radix->memory + node->parent) : NULL;
     }
@@ -1890,8 +1910,6 @@ void radixCheckpointRestore(Radix *radix, RadixCheckpoint *checkpoint)
         meta->lastNode = node->lastNode;
 
         // Restore node child (node is splitting node)
-        bool direction = bitGet(radix->memory + node->keyFore, node->keyForeOffset);
-
         size_t splittedNodeAddress = node->childSmaller != 0 ? node->childSmaller : node->childGreater;
 
         Node *splittedNode = splittedNodeAddress != 0 ? (Node *) (radix->memory + splittedNodeAddress) : NULL;
@@ -1906,9 +1924,11 @@ void radixCheckpointRestore(Radix *radix, RadixCheckpoint *checkpoint)
         Node *parentNode = node->parent != 0 ? (Node *) (radix->memory + node->parent) : NULL;
 
         if (parentNode) {
+            bool direction = bitGet(radix->memory + node->keyFore, node->keyForeOffset);
+
             size_t *parentNodeChildReference = direction ? &(parentNode->childGreater) : &(parentNode->childSmaller);
 
-            *parentNodeChildReference = splittedNode ? (uint8_t *)splittedNode - radix->memory : 0;
+            *parentNodeChildReference = splittedNode ? (unsigned char *)splittedNode - radix->memory : 0;
         }
     }
 

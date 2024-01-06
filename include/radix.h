@@ -25,7 +25,7 @@ typedef enum RadixError {
  *  @see radixClear
  */
 typedef struct Radix {
-    uint8_t *memory;
+    unsigned char *memory;
     size_t memorySize;
 } Radix;
 
@@ -43,7 +43,7 @@ typedef struct RadixValue {
     Radix *radix;
     size_t item;
 
-    uint8_t *data;
+    unsigned char *data;
     size_t dataSize;
 } RadixValue;
 
@@ -64,7 +64,7 @@ typedef struct RadixIterator {
     Radix *radix;
     size_t node;
 
-    uint8_t *data;
+    unsigned char *data;
     size_t dataSize;
 } RadixIterator;
 
@@ -88,7 +88,7 @@ typedef struct RadixMatch {
 
     size_t matchedBits;
 
-    uint8_t *data;
+    unsigned char *data;
     size_t dataSize;
 } RadixMatch;
 
@@ -112,7 +112,7 @@ typedef struct RadixCheckpoint {
  *  @param memory pointer to allocated memory
  *  @return RadixIterator object
  */
-Radix radixCreate(uint8_t *memory, size_t memorySize);
+Radix radixCreate(unsigned char *memory, size_t memorySize);
 
 /**
  * Radix Iterator
@@ -151,7 +151,7 @@ RadixValue radixValueIterator(Radix *radix);
  *  @param dataSize data size (in bytes)
  *  @return success or specific error
  */
-RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, uint8_t *data, size_t dataSize);
+RadixValue radixInsert(RadixIterator* iterator, unsigned char *key, size_t keyBits, unsigned char *data, size_t dataSize);
 
 /**
  * Radix Record Remove
@@ -163,7 +163,7 @@ RadixValue radixInsert(RadixIterator* iterator, uint8_t *key, size_t keyBits, ui
  *  @param keyBits key size (in bits)
  *  @return success or specific error
  */
-RadixValue radixRemove(RadixIterator* iterator, uint8_t *key, size_t keyBits);
+RadixValue radixRemove(RadixIterator* iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match Record
@@ -176,7 +176,7 @@ RadixValue radixRemove(RadixIterator* iterator, uint8_t *key, size_t keyBits);
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatch(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatch(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match Record
@@ -189,7 +189,7 @@ RadixMatch radixMatch(RadixIterator *iterator, uint8_t *key, size_t keyBits);
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatchNullable(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatchNullable(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match First Record
@@ -202,7 +202,7 @@ RadixMatch radixMatchNullable(RadixIterator *iterator, uint8_t *key, size_t keyB
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatchFirst(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatchFirst(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match First Record
@@ -215,7 +215,7 @@ RadixMatch radixMatchFirst(RadixIterator *iterator, uint8_t *key, size_t keyBits
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatchFirstNullable(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatchFirstNullable(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match Longest Record
@@ -228,7 +228,7 @@ RadixMatch radixMatchFirstNullable(RadixIterator *iterator, uint8_t *key, size_t
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatchLongest(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatchLongest(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match Longest Record
@@ -241,7 +241,7 @@ RadixMatch radixMatchLongest(RadixIterator *iterator, uint8_t *key, size_t keyBi
  *  @param keyBits key size (in bits)
  *  @return RadixMatch object
  */
-RadixMatch radixMatchLongestNullable(RadixIterator *iterator, uint8_t *key, size_t keyBits);
+RadixMatch radixMatchLongestNullable(RadixIterator *iterator, unsigned char *key, size_t keyBits);
 
 /**
  * Radix Match To Iterator
@@ -581,7 +581,7 @@ size_t radixKeyBits(RadixIterator *iterator);
  *  @param keyBits key size (in bits)
  *  @return success or specific error
  */
-RadixError radixKeyCopy(RadixIterator *iterator, uint8_t *outputKey, size_t keyBits);
+RadixError radixKeyCopy(RadixIterator *iterator, unsigned char *outputKey, size_t keyBits);
 
 /**
  * Radix Checkpoint
